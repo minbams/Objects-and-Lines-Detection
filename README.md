@@ -8,7 +8,7 @@ pip install numpy
 
 pip install opencv-python
 
-need to have model MOBILENET_SSD
+need to have model MobileNetSSD
 
 # How to run this project
 
