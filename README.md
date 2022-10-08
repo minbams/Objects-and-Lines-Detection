@@ -1,5 +1,7 @@
 # objects-and-lines-detection
 
+This project using python.
+
 # Project setup
 
 pip install numpy
