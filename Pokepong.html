@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<HEAD>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Prompt">
+	<style>
+		body{
+			margin: 0px;
+			overflow: hidden;
+			background-color:white;
+			
+		}
+		#begin {
+			position: absolute;
+			width: 100%;
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			background-color: rgba(0,0,0,0.5);
+			text-align: center;
+			font-size: 14px;
+			cursor: pointer;
+			color: white;
+		}
+		#pointUI {
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: right;
+				z-index: 100;
+				display:block;
+				color: darkred;
+			}
+		#win {
+				position: absolute;
+				width: 100%;
+				height: 100%;
+				background-color: rgba(0,0,0,1);
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+				text-align: center;
+				font-size: 14px;
+				cursor: pointer;
+				color: yellow;
+			}
+	</style>
+	<script src="libs/stats.min.js"></script>
+	<script src="libs/three.min.js"></script>
+	<script src="libs/loader/GLTFLoader.js"></script>
+	<script src="libs/loader/OBJLoader.js"></script>
+	<script src="libs/SkeletonUtils.js"></script>
+	<script src="https://kit.fontawesome.com/3cae348c37.js" crossorigin="anonymous"></script>
+</HEAD>
+<div id="begin">
+				<p style="color: lightpink; font-size:64px; font-family: 'Prompt',serif;">
+					<b>POKEPONG</b>
+				</p>
+				<p style="font-size:40px; font-family: 'Prompt',serif;">
+					<b>Spacebar to play</b>
+				</p>
+				<p style="font-size:32px; font-family: 'Prompt',serif;">
+				<b>Move: <i class="fas fa-arrow-alt-circle-left"></i>&ensp;<i class="fas fa-arrow-alt-circle-right"></i><br/>
+				</p>
+				<p style="color: lightpink; font-size:32px; font-family: 'Prompt',serif;">
+					<b>Collect all boxes!</b>
+				</p>
+			</div>
+<div id="pointUI">
+			<p style="font-size:46px; font-family: 'Prompt',serif;color: #D9DE16;">
+				<b><label >Score : </label>
+				<label id="point" ></label>&emsp;</b>
+			</p>
+		</div>
+<div id="win">
+			<p style="font-size:46px;font-family: 'Prompt',serif;">
+				<b><label ><br/><br/><br/><br/><br/>CONGRATULATION YOU WIN!</label></b>
+			</p>
+		</div>
+<BODY>
+<script>
+let point = 0;
+const W = window.innerWidth;
+const H = window.innerHeight;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 75, W / H, 0.1, 3000 );
+const renderer = new THREE.WebGLRenderer({antialias:true});
+const pointUI = document.getElementById('pointUI');
+const winUI = document.getElementById('win');
+const beginUI = document.getElementById('begin');
+renderer.setSize( W, H );
+document.body.appendChild( renderer.domElement );
+
+//set stats
+const stat = new Stats();
+stat.setMode(0);
+stat.domElement.style.position = 'absolute';
+stat.domElement.style.left = '0px';
+stat.domElement.style.top = '0px';
+document.body.appendChild(stat.domElement);
+
+const debug = document.createElement("div");
+debug.style.position = 'absolute';
+debug.style.left = '100px';
+debug.style.top = '0px';
+debug.style.width = '500px';
+debug.style.height = '30px';
+debug.style.fontSize = '20px';
+debug.style.color = 'white';
+document.body.appendChild(debug);
+debug.innerHTML = "...";
+
+var light, ball, player, floor,three;
+var blocks = new Array(66);
+var speed = new THREE.Vector3(7,0,-9);
+var L = false, R = false;
+var started = false;
+var objects = [];
+
+//add point light, set ball, set player and add pole 
+function init(){
+	renderer.setClearColor(0x1f1f1f);
+	camera.position.set(0,210,800);
+	//add light
+	light = new THREE.PointLight( 0xFFFFFF, 1, 3000 );
+	scene.add(light);
+      light.position.y = 200;
+      light.position.z = 350;
+
+    //set floor add texture
+	let texture = new THREE.TextureLoader().load("textures/brick.jpg");
+	texture.wrapS = texture.wrapT = THREE.ReapeatWrapping;
+	texture.repeat.set(7,10);
+	floor = new THREE.Mesh(
+		new THREE.PlaneGeometry(600,1000,40,40),
+		new THREE.MeshPhongMaterial({map:texture})
+	);
+	floor.rotation.x = -Math.PI/2;
+	scene.add(floor);
+
+	//set player
+	player = new THREE.Mesh(
+		new THREE.BoxGeometry(100,20,20),
+		new THREE.MeshBasicMaterial({
+			color:0xFFFD94,
+			transparent: true,
+			opacity: 0.5
+		})	
+	);
+	player.position.z = 500;
+	player.position.y = 10;
+	scene.add(player);
+
+	document.addEventListener('keydown',onKeyDown);
+	document.addEventListener('keyup',onKeyUp);
+
+    //set ball
+	ball = new THREE.Mesh(
+		new THREE.SphereGeometry(11,11,11),
+		new THREE.MeshBasicMaterial({ 
+			 map: new THREE.TextureLoader().load("textures/ball.png")
+			})
+	);
+	ball.position.y = 15;
+	scene.add(ball);
+	objects.push(ball);
+	let x = -250;
+	let z = -400;
+    //right pole
+	three = new THREE.Mesh(
+		new THREE.CylinderGeometry(15,15,901,30),
+		new THREE.MeshPhongMaterial({color:0xA4FFF2})
+	);
+	three.position.x = 285;
+	three.position.y = 25;
+	three.position.z = 25;
+	scene.add(three);
+	objects.push(three);
+	three.rotation.x = Math.PI/2;
+    //left pole
+	three = new THREE.Mesh(
+		new THREE.CylinderGeometry(15,15,901,30),
+		new THREE.MeshPhongMaterial({color:0xA4FFF2})
+	);
+	three.position.x = -285;
+	three.position.y = 25;
+	three.position.z = 25;
+	scene.add(three);
+	objects.push(three);
+	three.rotation.x = Math.PI/2;
+    //front pole 
+	three = new THREE.Mesh(
+		new THREE.CylinderGeometry(15,15,100,30),
+		new THREE.MeshPhongMaterial({color:0xA4FFF2})
+	);
+	three.position.x = -285;
+	three.position.y = 50;
+	three.position.z = 480;
+	scene.add(three);
+	objects.push(three);
+	three.rotation.y = Math.PI/2;
+
+	three = new THREE.Mesh(
+		new THREE.CylinderGeometry(15,15,100,30),
+		new THREE.MeshPhongMaterial({color:0xA4FFF2})
+	);
+	three.position.x = 285;
+	three.position.y = 50;
+	three.position.z = 480;
+	scene.add(three);
+	objects.push(three);
+	three.rotation.y = Math.PI/2;
+    //back pole
+	three = new THREE.Mesh(
+		new THREE.CylinderGeometry(15,15,50,30),
+		new THREE.MeshPhongMaterial({color:0xA4FFF2})
+	);
+	three.position.x = -285;
+	three.position.y = 50;
+	three.position.z = -410;
+	scene.add(three);
+	objects.push(three);
+	three.rotation.y = Math.PI/2;
+	
+	three = new THREE.Mesh(
+		new THREE.CylinderGeometry(15,15,50,30),
+		new THREE.MeshPhongMaterial({color:0xA4FFF2})
+	);
+	three.position.x = 285;
+	three.position.y = 50;
+	three.position.z = -410;
+	scene.add(three);
+	objects.push(three);
+	three.rotation.y = Math.PI/2;
+    //horizontal back pole 
+	three = new THREE.Mesh(
+		new THREE.CylinderGeometry(15,15,585,30),
+		new THREE.MeshPhongMaterial({color:0xA4FFF2})
+	);
+	three.position.x = 0;
+	three.position.y = 25;
+	three.position.z = -410;
+	scene.add(three);
+	objects.push(three);
+	three.rotation.z = Math.PI/2;
+
+	//create skybox
+	var cubeGeometry = new THREE.BoxGeometry(1920, 1080, 2000);
+	var cubeMaterials = [
+		new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("textures/pokemongo.jpg"), side: THREE.DoubleSide}),
+		new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("textures/pokemongo.jpg"), side: THREE.DoubleSide}),
+		new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("textures/sky.jpg"), side: THREE.DoubleSide}),
+		new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("textures/sand2.jpg"), side: THREE.DoubleSide}),
+		new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("textures/pokemongo.jpg"), side: THREE.DoubleSide}),
+		new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("textures/pokemongo.jpg"), side: THREE.DoubleSide})
+	];
+		var cube = new THREE.Mesh(cubeGeometry, cubeMaterials);
+		cube.position.set(0,510,300);
+		scene.add(cube);
+
+	//add obj 4 models
+	var loader = new THREE.OBJLoader();
+		loader.load("textures/The_Limited_4.obj", function(object){
+		object.position.set(290, 100, 485);
+		object.rotation.y = 175;
+		object.scale.set(2, 2, 2);
+		scene.add(object);
+	})
+	var loader = new THREE.OBJLoader();
+		loader.load("textures/The_Limited_4.obj", function(object){
+		object.position.set(192, 110, 10);
+		object.rotation.y = 75;
+		object.scale.set(2, 2, 2);
+		scene.add(object);
+	})
+	var loader = new THREE.OBJLoader();
+		loader.load("textures/The_Limited_4.obj", function(object){
+		object.position.set(-182, 110, 10);
+		object.rotation.y = 25.5;
+		object.scale.set(2, 2, 2);
+		scene.add(object);
+	})
+	var loader = new THREE.OBJLoader();
+		loader.load("textures/The_Limited_4.obj", function(object){
+		object.position.set(-280, 100, 480);
+		object.rotation.y = 1;
+		object.scale.set(2, 2, 2);
+		scene.add(object);
+	})
+
+	//set box
+	for(let i =0;i<blocks.length;i++){
+		blocks[i] = new THREE.Mesh(
+			new THREE.BoxGeometry(30,25,25),
+			new THREE.MeshBasicMaterial({ 
+				map:new THREE.TextureLoader().load("textures/box.jpeg")
+			})
+			
+		);
+		blocks[i].position.x = x;
+		blocks[i].position.z = z;
+		blocks[i].position.y = 10;
+		x+= 50;
+		if(x>250){
+			x=-250;
+			z += 50;
+		}
+		scene.add(blocks[i]);
+	}
+
+}
+
+function onKeyDown(event){
+	beginUI.style.display = 'none';
+	console.log(event.keyCode);
+	if(event.keyCode==39){
+		L=false;
+		R=true;
+	}else if(event.keyCode==37){
+		L=true;
+		R=false;
+	}else if(event.keyCode==32){
+		started = true;
+	}
+
+}
+function onKeyUp(event){
+	L=false;
+	R=false;
+}
+
+function collides(object1, object2){
+	object1.geometry.computeBoundingBox();
+	object2.geometry.computeBoundingBox();
+	object1.updateMatrixWorld();
+	object2.updateMatrixWorld();
+	let b1 = object1.geometry.boundingBox.clone();
+	let b2 = object2.geometry.boundingBox.clone();
+	b1.applyMatrix4(object1.matrixWorld);
+	b2.applyMatrix4(object2.matrixWorld);
+	return b1.intersectsBox(b2);
+}
+
+//create audio
+const listener = new THREE.AudioListener();
+camera.add(listener);
+
+const sound = new THREE.Audio(listener);
+//add sound
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load('sound/8-bits.ogg', function(buffer) {
+	sound.setBuffer(buffer);
+	sound.setLoop(true);
+	sound.setVolume(0.1);
+	sound.play();
+});
+
+//play game system
+function render(){
+	requestAnimationFrame(render);
+	document.getElementById("point").innerHTML = point;
+	win.style.display = 'none';
+	stat.begin();
+
+	if(L){
+		player.position.x -= 10;
+	}
+	if(R){
+		player.position.x += 10;
+	}
+
+	if(!started){
+		ball.rotation.y += 0.05;
+		ball.position.x = 	player.position.x;
+		ball.position.z = 	player.position.z - 20;
+	}else{
+		ball.position.x += speed.x;
+		ball.position.z += speed.z;
+
+		if(collides(player,ball)){
+				speed.z = -9;
+		}
+		for(let i=0;i<blocks.length;i++){
+				if( collides(blocks[i],ball) ){
+					blocks[i].position.y = -100;
+					point++;
+				}
+		}
+
+		if(point == 66){
+			win.style.display = 'block';
+		}
+
+		if(ball.position.x > 300 || ball.position.x < -300){
+				speed.x*=-1;
+		}
+		if(ball.position.z < -500){
+			speed.z*=-1;
+		}
+		if(ball.position.z > 530){
+			started = false;
+			speed.z = -9;
+		}
+	}
+
+
+	stat.end();
+	renderer.render(scene, camera);
+}
+
+init();
+render();
+
+</script>
+
+</BODY>
+</HTML>
