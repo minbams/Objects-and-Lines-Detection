@@ -1,4 +1,4 @@
-# objects-and-lines-detection
+# Objects and Lines Detection
 
 This project using python.
 
