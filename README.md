@@ -12,4 +12,4 @@ need to have model MobileNetSSD
 
 # How to run this project
 
-python objects_and_lines_detection.py
+type python objects_and_lines_detection.py on CMD
